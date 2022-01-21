@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import Conversation from '../components/Conversation'
 
-function Main ({ currentUser, logOut, users }) {
-  const [currentConversation, setCurrentConversation] = useState(null)
+function Main ({ currentUser, logOut, users, setModal, modal }) {
   const [conversations, setConversations] = useState([])
   const params = useParams()
   const navigate = useNavigate()
@@ -12,22 +12,48 @@ function Main ({ currentUser, logOut, users }) {
   }, [currentUser, navigate])
 
   useEffect(() => {
-    if (params.conversationId) {
-      fetch(
-        `http://localhost:4000/conversations/${params.conversationId}?_embed=messages`
-      )
-        .then(resp => resp.json())
-        .then(conversation => setCurrentConversation(conversation))
-    }
-  }, [params.conversationId])
-
-  useEffect(() => {
     if (currentUser === null) return
 
     fetch(`http://localhost:4000/conversations?userId=${currentUser.id}`)
       .then(resp => resp.json())
       .then(conversations => setConversations(conversations))
   }, [currentUser])
+
+  const usersIHaveNotTalkedToYet = users.filter(user => {
+    // when do I want to keep this user?
+
+    // don't show the currently logged in user
+    if (currentUser && user.id === currentUser.id) return false
+
+    // don't show any users in conversations
+    // Is this user's id in the conversations?
+    // Is it either in userId or participantId
+    for (const conversation of conversations) {
+      if (conversation.userId === user.id) return false
+      if (conversation.participantId === user.id) return false
+    }
+    // at this point we know this user's id is not anywhere in the conversations
+    // so we want to keep it
+    return true
+  })
+
+  function createConversation (participantId) {
+    fetch('http://localhost:4000/conversations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        userId: currentUser.id,
+        participantId: participantId
+      })
+    })
+      .then(resp => resp.json())
+      .then(newConversation => {
+        setConversations([...conversations, newConversation])
+        setModal('')
+      })
+  }
 
   if (currentUser === null) return <h1>Not signed in...</h1>
 
@@ -53,14 +79,18 @@ function Main ({ currentUser, logOut, users }) {
             type='search'
             name='messagesSearch'
             placeholder='Search chats'
-            value=''
           />
         </form>
 
         <ul>
-          {/* <!-- This first item should always be present --> */}
           <li>
-            <button className='chat-button'>
+            <button
+              className='chat-button'
+              onClick={() => {
+                // display a "start-chat" modal ✅
+                setModal('start-chat')
+              }}
+            >
               <div>
                 <h3>+ Start a new Chat</h3>
               </div>
@@ -78,7 +108,7 @@ function Main ({ currentUser, logOut, users }) {
             const talkingToUser = users.find(user => user.id === talkingToId)
 
             return (
-              <li>
+              <li key={conversation.id}>
                 <button
                   className='chat-button'
                   onClick={() => navigate(`/logged-in/${conversation.id}`)}
@@ -106,104 +136,56 @@ function Main ({ currentUser, logOut, users }) {
       {/* <!-- Main Chat Section --> */}
 
       {params.conversationId ? (
-        <main className='conversation'>
-          {/* <!-- Chat header --> */}
-          <header className='panel'></header>
+        <Conversation currentUser={currentUser} />
+      ) : null}
 
-          {/* <!-- 
-
-      The Messages List will go here. Check main-messages-list.html
-     --> */}
-
-          <ul className='conversation__messages'>
-            <li className='outgoing'>
-              <p>
-                Lorem ipsum dolor sit amet consectetur, adipisicing elit. Natus
-                excepturi non odit quisquam et assumenda suscipit maxime
-                officiis repellat possimus! Soluta illum rerum eligendi labore
-                ut nemo quod voluptates ad.
-              </p>
-            </li>
-
-            {/* <!-- Outgoing messages are messages sent by the current logged in user --> */}
-            <li className='outgoing'>
-              <p>Lorem ipsum...</p>
-            </li>
-            {/* <!--  --> */}
-
-            {/* <!-- This one doesnt belong to the current logged in user --> */}
-            <li>
-              <p>
-                Lorem ipsum dolor sit amet consectetur, adipisicing elit. Natus
-                excepturi non odit quisquam et assumenda suscipit maxime
-                officiis repellat possimus!
-              </p>
-            </li>
-
-            {/* <!--  --> */}
-            <li className='outgoing'>
-              <p>Some test message</p>
-            </li>
-            <li className='outgoing'>
-              <p>more messagesss!!!</p>
-            </li>
-            <li className='outgoing'>
-              <p>more messagesss!!!</p>
-            </li>
-            <li className='outgoing'>
-              <p>
-                Lorem ipsum dolor sit amet consectetur, adipisicing elit. Natus
-                excepturi non odit quisquam et assumenda suscipit maxime
-                officiis repellat possimus! Soluta illum rerum eligendi labore
-                ut nemo quod voluptates ad.Lorem ipsum dolor sit amet
-                consectetur, adipisicing elit. Natus excepturi non odit quisquam
-                et assumenda suscipit maxime officiis repellat possimus! Soluta
-                illum rerum eligendi labore ut nemo quod voluptates ad.Lorem
-                ipsum dolor sit amet consectetur, adipisicing elit. Natus
-                excepturi non odit quisquam et assumenda suscipit maxime
-                officiis repellat possimus! Soluta illum rerum eligendi labore
-                ut nemo quod voluptates ad.Lorem ipsum dolor sit amet
-                consectetur, adipisicing elit. Natus excepturi non odit quisquam
-                et assumenda suscipit maxime officiis repellat possimus! Soluta
-                illum rerum eligendi labore ut nemo quod voluptates ad.Lorem
-                ipsum dolor sit amet consectetur, adipisicing elit. Natus
-                excepturi non odit quisquam et assumenda suscipit maxime
-                officiis repellat possimus! Soluta illum rerum eligendi labore
-                ut nemo quod voluptates ad.Lorem ipsum dolor sit amet
-                consectetur, adipisicing elit. Natus excepturi non odit quisquam
-                et assumenda suscipit maxime officiis repellat possimus! Soluta
-                illum rerum eligendi labore ut nemo quod voluptates ad.Lorem
-                ipsum dolor sit amet consectetur, adipisicing elit. Natus
-                excepturi non odit quisquam et assumenda suscipit maxime
-                officiis repellat possimus! Soluta illum rerum eligendi labore
-                ut nemo quod voluptates ad.
-              </p>
-            </li>
-            <li>Cool</li>
-            <li className='outgoing'>Cool!!!</li>
-          </ul>
-
-          {/* <!-- Message Box --> */}
-          <footer>
-            <form className='panel conversation__message-box'>
-              <input type='text' placeholder='Type a message' value='' />
-              <button type='submit'>
-                {/* <!-- This is the send button --> */}
-                <svg
-                  xmlns='http://www.w3.org/2000/svg'
-                  viewBox='0 0 24 24'
-                  width='24'
-                  height='24'
-                >
-                  <path
-                    fill='currentColor'
-                    d='M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z'
-                  ></path>
-                </svg>
-              </button>
-            </form>
-          </footer>
-        </main>
+      {modal === 'start-chat' ? (
+        <div className='modal-wrapper'>
+          <div className='modal'>
+            <button className='close-modal' onClick={() => setModal('')}>
+              X
+            </button>
+            <h1>Start chat</h1>
+            {/* 
+              this modal should display all users
+              I have no conversations with yet ✅
+            */}
+            {usersIHaveNotTalkedToYet.length > 0 ? (
+              <ul>
+                {usersIHaveNotTalkedToYet.map(user => (
+                  <li key={user.id}>
+                    <button
+                      className='chat-button'
+                      onClick={() => {
+                        // clicking on one of those users
+                        // should start a conversation with them
+                        // how do we start a conversation?
+                        // - create a conversation on the server
+                        // - update conversations state
+                        createConversation(user.id)
+                      }}
+                    >
+                      <img
+                        className='avatar'
+                        height='50'
+                        width='50'
+                        alt=''
+                        src={user.avatar}
+                      />
+                      <div>
+                        <h3>
+                          {user.firstName} {user.lastName}
+                        </h3>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No new person to talk to</p>
+            )}
+          </div>
+        </div>
       ) : null}
     </div>
   )
